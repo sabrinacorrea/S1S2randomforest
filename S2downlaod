@@ -1,0 +1,55 @@
+/**
+ * Authors: Sabrina Corres and Vania Oliveira
+ * Creation date: 29/11/2019
+ * Last modified: 06/12/2019
+ * Description: this code clips, register and corrects Sentinel-2 imagery corresponding to the study area
+ */ 
+
+var geom2 = geom.buffer(1000000)
+
+//Centering map image to the position of area of interest
+Map.centerObject(geom, 14);
+
+//Reprojecting image to UTM 23S
+var proj = ee.Projection('EPSG:32723')
+print('Scale projection == reason for three blocks', proj.nominalScale());
+
+//Setting Start and End Date of phase
+var date_start = '2016-07-';
+var date_end   = '2016-07-30';
+
+//Getting image collection from COpernicus Catalogue
+var S2 = ee.ImageCollection('COPERNICUS/S2')
+                  //Filtering duration period pf phase
+                  .filterDate(date_start,date_end)
+                  //Defining boundary of search
+                  .filterBounds(geom2)
+                  //Organizing the images into a tile according to the percentage of clouds
+                  .sort('CLOUDY_PIXEL_PERCENTAGE',false)
+                  
+var mosaic_S2=S2.mosaic().clip(geom2);
+
+var S2a = mosaic_S2
+print(S2a)
+
+var S2r = S2a.reproject(proj, null, 10)
+Map.addLayer(S2r, {min: 0,  max:3000, bands: ['B4', 'B3', 'B2']}, 'After Reprojection')
+
+Map.addLayer(S2a,{min:0,max:5000,bands:['B4','B8','B3']})
+ // Exporting a cloud-optimized GeoTIFF.
+
+
+Export.image.toDrive({
+  //Selecting the image and the used bands
+  image: S2r.select('B2', 'B3', 'B4','B5', 'B6', 'B7', 'B8', 'B8A', 'B11', 'B12'),
+  //Defining name of exported image
+  description: 'Optico_ciclo1_fase5',
+  //Defining the spectral resolution of image
+  scale: 10,
+  //Clipping image
+  region: geom,
+  //File format
+  fileFormat: 'GeoTIFF',
+})
+
+//END PROGRAM
