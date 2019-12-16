@@ -1,0 +1,34 @@
+/**
+ * Authors: Sabrina Corres and Vania Oliveira
+ * Creation date: 29/11/2019
+ * Last modified: 02/12/2019
+ * Description: this code clips, register and corrects Sentinel-1 imagery corresponding to the study area
+ */ 
+Map.centerObject(AOI,13);
+
+var stbx=require('users/juandb/INPE_JDP:SAR_TBX');
+
+var dates=['2016-07-25'];
+
+var frost =stbx.makeFrostFilter(-1,7); //damping, window size
+
+var viz={min:-20,max:-5,bands:['VH','VH']};
+
+// A funcao MAP é cliente, não servidor, por isso permite fazer print, export, etc
+dates.map(function(date){
+
+  var dateee=ee.Date(date);
+  print(dateee);
+  var colS1 = stbx.getS1data(dateee,dateee.advance(11,'day')).filterBounds(AOI)
+    .map(stbx.maskEdge)
+    .map(stbx.toGamma0);
+  var img=ee.Image(colS1.first());
+  print (img.select(['VH']).projection());
+  Map.addLayer(img,viz,date);
+  Export.image.toDrive({
+    image:img.select(['VV','VH']),
+    description:'SAR_ciclo1_fase5',
+    region:AOI,
+    scale: 10
+  });
+});
